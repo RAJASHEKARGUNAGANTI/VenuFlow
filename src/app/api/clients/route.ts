@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { getVenueFilter } from "@/lib/venueFilter";
+import { assertActive } from "@/lib/assertActive";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -42,6 +43,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const body = await req.json();
   const parsed = createSchema.safeParse(body);

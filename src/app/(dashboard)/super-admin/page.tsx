@@ -15,7 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { useForm, Controller, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ShieldCheck, Users, TrendingUp, CalendarCheck, Plus, ToggleLeft, ToggleRight, Building2 } from "lucide-react";
+import { ShieldCheck, Users, TrendingUp, CalendarCheck, Plus, ToggleLeft, ToggleRight, Building2, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
 
@@ -39,7 +39,6 @@ const createSchema = z.object({
   name: z.string().min(1, "Required"),
   email: z.string().email("Invalid email"),
   password: z.string().min(6, "At least 6 characters"),
-  venueId: z.string().min(1, "Venue is required"),
 });
 type FormData = z.infer<typeof createSchema>;
 
@@ -76,7 +75,15 @@ export default function SuperAdminPage() {
     queryFn: () => fetch("/api/venues").then((r) => r.json()),
   });
 
-  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
+  const { data: globalStats } = useQuery<{
+    totalAdmins: number; activeAdmins: number; totalVenues: number;
+    totalHalls: number; totalBookings: number; totalRevenue: number;
+  }>({
+    queryKey: ["super-admin-stats"],
+    queryFn: () => fetch("/api/super-admin/stats").then((r) => r.json()),
+  });
+
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
     resolver: zodResolver(createSchema) as Resolver<FormData>,
   });
 
@@ -137,11 +144,6 @@ export default function SuperAdminPage() {
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
-  // KPIs
-  const totalAdmins = admins.length;
-  const activeAdmins = admins.filter((a) => a.isActive).length;
-  const totalRevenue = admins.reduce((s, a) => s + a.revenue, 0);
-  const totalBookings = admins.reduce((s, a) => s + a.bookings, 0);
 
   return (
     <div className="space-y-6">
@@ -179,26 +181,6 @@ export default function SuperAdminPage() {
                 <Input {...register("password")} type="password" placeholder="Min. 6 characters" />
                 {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
               </div>
-              <div className="space-y-1">
-                <Label>Assign Venue <span className="text-destructive">*</span></Label>
-                <Controller
-                  name="venueId"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a venue" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {venues.map((v) => (
-                          <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.venueId && <p className="text-xs text-destructive">{errors.venueId.message}</p>}
-              </div>
               <div className="flex justify-end gap-2 pt-2">
                 <Button type="button" variant="outline" onClick={() => { setOpen(false); reset(); }}>
                   Cancel
@@ -212,44 +194,31 @@ export default function SuperAdminPage() {
         </Dialog>
       </div>
 
-      {/* KPI Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card>
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Total Admins</span>
-              <Users className="h-4 w-4 text-blue-600" />
-            </div>
-            <p className="text-2xl font-bold">{totalAdmins}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Active Admins</span>
-              <ShieldCheck className="h-4 w-4 text-green-600" />
-            </div>
-            <p className="text-2xl font-bold text-green-600">{activeAdmins}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Combined Revenue</span>
-              <TrendingUp className="h-4 w-4 text-purple-600" />
-            </div>
-            <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-5 pb-5">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-xs text-muted-foreground">Total Bookings</span>
-              <CalendarCheck className="h-4 w-4 text-orange-600" />
-            </div>
-            <p className="text-2xl font-bold">{totalBookings}</p>
-          </CardContent>
-        </Card>
+      {/* Global Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+        {[
+          { label: "Total Admins",   value: globalStats?.totalAdmins ?? "—",   icon: Users,        color: "text-blue-600" },
+          { label: "Active Admins",  value: globalStats?.activeAdmins ?? "—",  icon: ShieldCheck,  color: "text-green-600" },
+          { label: "Total Venues",   value: globalStats?.totalVenues ?? "—",   icon: Building2,    color: "text-indigo-600" },
+          { label: "Total Halls",    value: globalStats?.totalHalls ?? "—",    icon: BookOpen,     color: "text-cyan-600" },
+          { label: "Total Bookings", value: globalStats?.totalBookings ?? "—", icon: CalendarCheck,color: "text-orange-600" },
+          {
+            label: "Total Revenue",
+            value: globalStats ? formatCurrency(globalStats.totalRevenue) : "—",
+            icon: TrendingUp,
+            color: "text-purple-600",
+          },
+        ].map(({ label, value, icon: Icon, color }) => (
+          <Card key={label}>
+            <CardContent className="pt-5 pb-5">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">{label}</span>
+                <Icon className={`h-4 w-4 ${color}`} />
+              </div>
+              <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       {/* Admins Table */}

@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BookingStatus } from "@prisma/client";
 import { z } from "zod";
+import { assertActive } from "@/lib/assertActive";
 
 const updateSchema = z.object({
   status: z.nativeEnum(BookingStatus).optional(),
@@ -39,6 +40,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const body = await req.json();
   const parsed = updateSchema.safeParse(body);

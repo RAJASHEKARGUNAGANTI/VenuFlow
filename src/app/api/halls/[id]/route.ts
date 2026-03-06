@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { assertActive } from "@/lib/assertActive";
 
 const updateSchema = z.object({
   name: z.string().min(1).optional(),
@@ -14,6 +15,7 @@ const updateSchema = z.object({
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const user = session.user as { role?: string };
   if (user.role !== "ADMIN" && user.role !== "MANAGER") {
@@ -35,6 +37,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const user = session.user as { role?: string };
   if (user.role !== "ADMIN" && user.role !== "MANAGER") {

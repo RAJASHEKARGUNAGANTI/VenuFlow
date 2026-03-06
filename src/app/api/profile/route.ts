@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { assertActive } from "@/lib/assertActive";
 
 const updateSchema = z.object({
   name: z.string().min(1, "Name is required"),
@@ -32,6 +33,7 @@ export async function GET() {
 export async function PATCH(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const user = session.user as { id?: string };
   const body = await req.json();

@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { cn } from "@/lib/utils";
 import {
   Building2, CalendarCheck, Users, CreditCard, UserCog,
-  BarChart3, Settings, Package, Truck, LayoutDashboard,
+  BarChart3, Settings, Package, Truck, LayoutDashboard, ShieldCheck,
 } from "lucide-react";
 
-const navItems = [
+const adminNavItems = [
   { label: "Dashboard",   href: "/",          icon: LayoutDashboard },
   { label: "Venues & Halls", href: "/venues",  icon: Building2 },
   { label: "Bookings",    href: "/bookings",  icon: CalendarCheck },
@@ -21,8 +22,15 @@ const navItems = [
   { label: "Settings",    href: "/settings",  icon: Settings },
 ];
 
+const superAdminNavItems = [
+  { label: "Admin Panel", href: "/super-admin", icon: ShieldCheck },
+];
+
 export function Sidebar() {
   const pathname = usePathname();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const navItems = role === "SUPER_ADMIN" ? superAdminNavItems : adminNavItems;
 
   return (
     <aside className="fixed inset-y-0 left-0 z-40 w-56 bg-card border-r hidden md:flex flex-col">

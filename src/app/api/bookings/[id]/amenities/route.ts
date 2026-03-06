@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { assertActive } from "@/lib/assertActive";
 
 const addSchema = z.object({
   amenityTemplateId: z.string().min(1),
@@ -28,6 +29,7 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const user = session.user as { id?: string };
   const body = await req.json();
@@ -63,6 +65,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const blocked = await assertActive(session); if (blocked) return blocked;
 
   const { amenityId } = await req.json();
   if (!amenityId) return NextResponse.json({ error: "amenityId required" }, { status: 400 });

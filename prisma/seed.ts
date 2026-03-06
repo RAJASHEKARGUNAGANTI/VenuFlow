@@ -9,6 +9,18 @@ async function main() {
   console.log("Seeding database...");
 
   const hashedPassword = await bcrypt.hash("admin123", 12);
+  const superAdmin = await prisma.user.upsert({
+    where: { email: "superadmin@venueflow.com" },
+    update: {},
+    create: {
+      name: "Super Admin",
+      email: "superadmin@venueflow.com",
+      password: hashedPassword,
+      role: UserRole.SUPER_ADMIN,
+    },
+  });
+  console.log("Created super admin:", superAdmin.email);
+
   const admin = await prisma.user.upsert({
     where: { email: "admin@venueflow.com" },
     update: {},

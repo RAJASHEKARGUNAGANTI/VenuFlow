@@ -4,11 +4,16 @@ import { getVenueFilter } from "@/lib/venueFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, CalendarCheck, CreditCard, Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { BookingStatus } from "@prisma/client";
 import { BookingCalendar } from "@/components/dashboard/BookingCalendar";
 
 export default async function DashboardPage() {
   const session = await auth();
+
+  if ((session?.user as { role?: string } | undefined)?.role === "SUPER_ADMIN") {
+    redirect("/super-admin");
+  }
 
   // Read fresh from DB — handles multi-venue admins and stale JWTs
   const [bookingVenueFilter, clientVenueFilter] = await Promise.all([
