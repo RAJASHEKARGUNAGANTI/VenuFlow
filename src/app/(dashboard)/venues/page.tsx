@@ -18,12 +18,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const schema = z.object({
-  name: z.string().min(1, "Required"),
-  address: z.string().min(1, "Required"),
-  city: z.string().min(1, "Required"),
-  phone: z.string().min(1, "Required"),
-  email: z.string().email().optional().or(z.literal("")),
-  gstNumber: z.string().optional(),
+  name: z.string().min(2, "Venue name must be at least 2 characters"),
+  address: z.string().min(5, "Enter a complete address"),
+  city: z.string().min(2, "Enter a valid city name"),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
+  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
+  gstNumber: z.string().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, "Invalid GST number (e.g. 29ABCDE1234F1Z5)").optional().or(z.literal("")),
 });
 type FormData = z.infer<typeof schema>;
 
@@ -84,13 +84,13 @@ export default function VenuesPage() {
                 { name: "name", label: "Venue Name", placeholder: "Grand Convention Centre" },
                 { name: "address", label: "Address", placeholder: "123 Main Street" },
                 { name: "city", label: "City", placeholder: "Hyderabad" },
-                { name: "phone", label: "Phone", placeholder: "+91 98765 43210" },
+                { name: "phone", label: "Phone", placeholder: "9876543210", inputMode: "numeric" as const, maxLength: 10 },
                 { name: "email", label: "Email (optional)", placeholder: "info@venue.com" },
                 { name: "gstNumber", label: "GST Number (optional)", placeholder: "36AABCU9603R1ZX" },
-              ].map(({ name, label, placeholder }) => (
+              ].map(({ name, label, placeholder, ...extra }) => (
                 <div key={name} className="space-y-1">
                   <Label>{label}</Label>
-                  <Input placeholder={placeholder} {...register(name as keyof FormData)} />
+                  <Input placeholder={placeholder} {...extra} {...register(name as keyof FormData)} />
                   {errors[name as keyof FormData] && (
                     <p className="text-xs text-destructive">{errors[name as keyof FormData]?.message}</p>
                   )}
@@ -155,7 +155,9 @@ export default function VenuesPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="h-3.5 w-3.5 shrink-0" />
-                    <span>{venue.phone}</span>
+                    <a href={`tel:${venue.phone}`} className="hover:underline hover:text-primary transition-colors">
+                      {venue.phone}
+                    </a>
                   </div>
                   <div className="flex gap-4 pt-2">
                     <span className="text-foreground font-medium">{venue._count?.halls ?? 0} halls</span>

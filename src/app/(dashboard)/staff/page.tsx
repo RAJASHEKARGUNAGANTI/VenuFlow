@@ -16,11 +16,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const schema = z.object({
-  name: z.string().min(1, "Required"),
-  phone: z.string().min(1, "Required"),
-  email: z.string().email().optional().or(z.literal("")),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
+  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
   role: z.string().min(1, "Required"),
-  salary: z.preprocess((v) => v === "" || v == null ? undefined : Number(v), z.number().optional()),
+  salary: z.preprocess((v) => v === "" || v == null ? undefined : Number(v), z.number().min(0, "Salary cannot be negative").optional()),
   venueId: z.string().min(1, "Required"),
 });
 type FormData = z.infer<typeof schema>;
@@ -84,7 +84,7 @@ export default function StaffPage() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
                   <Label>Phone *</Label>
-                  <Input placeholder="Phone number" {...register("phone")} />
+                  <Input placeholder="9876543210" inputMode="numeric" maxLength={10} {...register("phone")} />
                   {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
                 </div>
                 <div className="space-y-1">
@@ -163,7 +163,11 @@ export default function StaffPage() {
                 <TableRow key={s.id}>
                   <TableCell className="font-medium">{s.name}</TableCell>
                   <TableCell>{s.role}</TableCell>
-                  <TableCell>{s.phone}</TableCell>
+                  <TableCell>
+                    <a href={`tel:${s.phone}`} className="hover:underline hover:text-primary transition-colors">
+                      {s.phone}
+                    </a>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{s.email ?? "—"}</TableCell>
                   <TableCell>{s.venue.name}</TableCell>
                   <TableCell>{s.salary ? `₹${s.salary.toLocaleString("en-IN")}` : "—"}</TableCell>

@@ -127,7 +127,9 @@ export default function BookingDetailPage() {
               <User className="h-3.5 w-3.5" /><span className="text-xs">Client</span>
             </div>
             <p className="font-medium text-sm">{booking.client.name}</p>
-            <p className="text-xs text-muted-foreground">{booking.client.phone}</p>
+            <a href={`tel:${booking.client.phone}`} className="text-xs text-muted-foreground hover:underline hover:text-primary transition-colors">
+              {booking.client.phone}
+            </a>
           </CardContent>
         </Card>
         <Card>

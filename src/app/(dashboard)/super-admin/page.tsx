@@ -37,9 +37,9 @@ interface Venue {
 }
 
 const createSchema = z.object({
-  name: z.string().min(1, "Required"),
-  email: z.string().email("Invalid email"),
-  password: z.string().min(6, "At least 6 characters"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Enter a valid email address"),
+  password: z.string().min(8, "At least 8 characters"),
 });
 type FormData = z.infer<typeof createSchema>;
 

@@ -22,20 +22,20 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Venue edit schema ──────────────────────────────────────────────────────────
 const venueSchema = z.object({
-  name: z.string().min(1, "Required"),
-  address: z.string().min(1, "Required"),
-  city: z.string().min(1, "Required"),
-  phone: z.string().min(1, "Required"),
-  email: z.string().email().optional().or(z.literal("")),
-  gstNumber: z.string().optional(),
+  name: z.string().min(2, "Venue name must be at least 2 characters"),
+  address: z.string().min(5, "Enter a complete address"),
+  city: z.string().min(2, "Enter a valid city name"),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
+  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
+  gstNumber: z.string().regex(/^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/, "Invalid GST number (e.g. 29ABCDE1234F1Z5)").optional().or(z.literal("")),
 });
 type VenueForm = z.infer<typeof venueSchema>;
 
 // ── Hall schema ────────────────────────────────────────────────────────────────
 const hallSchema = z.object({
-  name: z.string().min(1, "Required"),
-  capacity: z.preprocess((v) => Number(v), z.number().int().min(1, "Min 1")),
-  basePrice: z.preprocess((v) => Number(v), z.number().min(0, "Min 0")),
+  name: z.string().min(2, "Hall name must be at least 2 characters"),
+  capacity: z.preprocess((v) => Number(v), z.number().int().min(1, "Capacity must be at least 1").max(100000, "Capacity seems too large")),
+  basePrice: z.preprocess((v) => Number(v), z.number().min(0, "Price cannot be negative")),
   description: z.string().optional(),
 });
 type HallForm = z.infer<typeof hallSchema>;
@@ -261,13 +261,13 @@ export default function VenueDetailPage() {
                     { name: "name" as const, label: "Venue Name" },
                     { name: "address" as const, label: "Address" },
                     { name: "city" as const, label: "City" },
-                    { name: "phone" as const, label: "Phone" },
+                    { name: "phone" as const, label: "Phone", inputMode: "numeric" as const, maxLength: 10 },
                     { name: "email" as const, label: "Email (optional)" },
                     { name: "gstNumber" as const, label: "GST Number (optional)" },
-                  ].map(({ name, label }) => (
+                  ].map(({ name, label, ...extra }) => (
                     <div key={name} className="space-y-1">
                       <Label>{label}</Label>
-                      <Input {...venueForm.register(name)} />
+                      <Input {...extra} {...venueForm.register(name)} />
                       {venueForm.formState.errors[name] && (
                         <p className="text-xs text-destructive">{venueForm.formState.errors[name]?.message}</p>
                       )}
@@ -288,7 +288,9 @@ export default function VenueDetailPage() {
           </div>
           <div className="flex items-center gap-2 text-muted-foreground">
             <Phone className="h-3.5 w-3.5 shrink-0" />
-            <span>{venue.phone}</span>
+            <a href={`tel:${venue.phone}`} className="hover:underline hover:text-primary transition-colors">
+              {venue.phone}
+            </a>
           </div>
           {venue.email && (
             <div className="flex items-center gap-2 text-muted-foreground">

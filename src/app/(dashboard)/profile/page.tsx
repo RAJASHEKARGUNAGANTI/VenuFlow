@@ -15,14 +15,14 @@ import { User, Mail, Lock, ShieldCheck, Eye, EyeOff, Save } from "lucide-react";
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
 const infoSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email"),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  email: z.string().email("Enter a valid email address"),
 });
 type InfoForm = z.infer<typeof infoSchema>;
 
 const pwSchema = z.object({
   currentPassword: z.string().min(1, "Required"),
-  newPassword: z.string().min(6, "Minimum 6 characters"),
+  newPassword: z.string().min(8, "Minimum 8 characters"),
   confirmPassword: z.string().min(1, "Required"),
 }).refine((d) => d.newPassword === d.confirmPassword, {
   message: "Passwords do not match",

@@ -653,7 +653,9 @@ export default function PaymentsPage() {
                       </td>
                       <td className="px-4 py-3">
                         <p className="font-medium text-xs">{p.booking.client.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{p.booking.client.phone}</p>
+                        <a href={`tel:${p.booking.client.phone}`} className="text-[11px] text-muted-foreground hover:underline hover:text-primary transition-colors">
+                          {p.booking.client.phone}
+                        </a>
                         {p.booking.client.email && (
                           <p className="text-[11px] text-muted-foreground">{p.booking.client.email}</p>
                         )}

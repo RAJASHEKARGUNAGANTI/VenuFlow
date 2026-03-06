@@ -20,9 +20,9 @@ import { useSession } from "next-auth/react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const schema = z.object({
-  name: z.string().min(1, "Required"),
-  phone: z.string().min(1, "Required"),
-  email: z.string().email().optional().or(z.literal("")),
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  phone: z.string().regex(/^[6-9]\d{9}$/, "Enter a valid 10-digit mobile number"),
+  email: z.string().email("Enter a valid email address").optional().or(z.literal("")),
   address: z.string().optional(),
   venueId: z.string().min(1, "Select a venue"),
 });
@@ -206,7 +206,11 @@ export default function ClientsPage() {
                   <TableCell>
                     <Link href={`/clients/${c.id}`} className="font-medium hover:underline">{c.name}</Link>
                   </TableCell>
-                  <TableCell>{c.phone}</TableCell>
+                  <TableCell>
+                    <a href={`tel:${c.phone}`} className="hover:underline hover:text-primary transition-colors">
+                      {c.phone}
+                    </a>
+                  </TableCell>
                   <TableCell className="text-muted-foreground">{c.email ?? "—"}</TableCell>
                   <TableCell>{c._count.bookings}</TableCell>
                   <TableCell>
@@ -309,7 +313,7 @@ function ClientForm({
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-1">
           <Label>Phone *</Label>
-          <Input placeholder="+91 98765 43210" {...register("phone")} />
+          <Input placeholder="9876543210" inputMode="numeric" maxLength={10} {...register("phone")} />
           {errors.phone && <p className="text-xs text-destructive">{errors.phone.message}</p>}
         </div>
         <div className="space-y-1">

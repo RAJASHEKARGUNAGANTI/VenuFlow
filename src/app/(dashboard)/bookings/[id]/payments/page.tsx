@@ -97,7 +97,7 @@ const schema = z.object({
   isRefund: z.boolean().optional().default(false),
   notes: z.string().optional(),
   upiId: z.string().optional(), utr: z.string().optional(),
-  cardType: z.string().optional(), last4: z.string().max(4).optional(), authCode: z.string().optional(),
+  cardType: z.string().optional(), last4: z.string().regex(/^\d{4}$/, "Enter exactly 4 digits").optional(), authCode: z.string().optional(),
   transferType: z.string().optional(), bankName: z.string().optional(), bankRef: z.string().optional(),
   chequeNumber: z.string().optional(), chequeBank: z.string().optional(), chequeDate: z.string().optional(),
 });
@@ -258,7 +258,9 @@ export default function BookingPaymentsPage() {
               <User className="h-3.5 w-3.5" /><span className="text-xs">Client</span>
             </div>
             <p className="font-medium text-sm">{booking.client.name}</p>
-            <p className="text-xs text-muted-foreground">{booking.client.phone}</p>
+            <a href={`tel:${booking.client.phone}`} className="text-xs text-muted-foreground hover:underline hover:text-primary transition-colors">
+              {booking.client.phone}
+            </a>
             {booking.client.email && <p className="text-xs text-muted-foreground">{booking.client.email}</p>}
           </CardContent>
         </Card>

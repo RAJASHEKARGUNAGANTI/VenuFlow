@@ -122,7 +122,9 @@ export default function BookingsPage() {
                   </TableCell>
                   <TableCell>
                     <p className="font-medium">{b.client.name}</p>
-                    <p className="text-xs text-muted-foreground">{b.client.phone}</p>
+                    <a href={`tel:${b.client.phone}`} className="text-xs text-muted-foreground hover:underline hover:text-primary transition-colors">
+                      {b.client.phone}
+                    </a>
                   </TableCell>
                   <TableCell>
                     <p>{b.hall.name}</p>

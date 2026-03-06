@@ -225,7 +225,7 @@ export default function InvoicePage() {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">{venue.name}</h1>
             <p className="text-gray-600 mt-1">{venue.address}, {venue.city}</p>
-            {venue.phone && <p className="text-gray-600">Tel: {venue.phone}</p>}
+            {venue.phone && <p className="text-gray-600">Tel: <a href={`tel:${venue.phone}`} className="hover:underline">{venue.phone}</a></p>}
             {venue.email && <p className="text-gray-600">Email: {venue.email}</p>}
             {venue.gstNumber && <p className="text-gray-600">GSTIN: {venue.gstNumber}</p>}
           </div>
@@ -243,7 +243,7 @@ export default function InvoicePage() {
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Bill To</p>
             <p className="font-semibold text-gray-900">{booking.client.name}</p>
-            <p className="text-gray-600">{booking.client.phone}</p>
+            <a href={`tel:${booking.client.phone}`} className="text-gray-600 hover:underline">{booking.client.phone}</a>
             {booking.client.email && <p className="text-gray-600">{booking.client.email}</p>}
             {booking.client.address && <p className="text-gray-600">{booking.client.address}</p>}
           </div>
