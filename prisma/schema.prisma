@@ -1,0 +1,393 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  RECEPTIONIST
+  ACCOUNTANT
+}
+
+enum BookingStatus {
+  ENQUIRY
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum EventType {
+  WEDDING
+  BIRTHDAY
+  CORPORATE
+  RECEPTION
+  CONFERENCE
+  SOCIAL
+  OTHER
+}
+
+enum PaymentMode {
+  CASH
+  UPI
+  BANK_TRANSFER
+  CHEQUE
+  CARD
+}
+
+enum PaymentPurpose {
+  ADVANCE_DEPOSIT
+  INSTALLMENT
+  AMENITY_ADDITION
+  FINAL_SETTLEMENT
+  REFUND
+}
+
+enum AmenityCategory {
+  DECORATION
+  AUDIO_VISUAL
+  CATERING
+  ENTERTAINMENT
+  FURNITURE
+  PHOTOGRAPHY
+  OTHER
+}
+
+enum TimeSlot {
+  MORNING
+  EVENING
+  FULL_DAY
+}
+
+// ─────────────────────────────────────────────
+// AUTH & USERS
+// ─────────────────────────────────────────────
+
+model User {
+  id        String   @id @default(cuid()) @map("_id")
+  name      String
+  email     String   @unique
+  password  String
+  role      UserRole @default(RECEPTIONIST)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id])
+
+  bookingsCreated     Booking[]        @relation("CreatedBy")
+  paymentsReceived    Payment[]        @relation("ReceivedBy")
+  amenitiesAdded      BookingAmenity[] @relation("AddedBy")
+  invoicesIssued      Invoice[]        @relation("IssuedBy")
+}
+
+// ─────────────────────────────────────────────
+// VENUE & HALL
+// ─────────────────────────────────────────────
+
+model Venue {
+  id        String   @id @default(cuid()) @map("_id")
+  name      String
+  address   String
+  city      String
+  phone     String
+  email     String?
+  gstNumber String?
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  halls     Hall[]
+  clients   Client[]
+  staff     Staff[]
+  resources Resource[]
+  vendors   Vendor[]
+  users     User[]
+}
+
+model Hall {
+  id           String   @id @default(cuid()) @map("_id")
+  venueId      String
+  name         String
+  capacity     Int
+  basePrice    Float
+  description  String?
+  floorPlanUrl String?
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  venue         Venue         @relation(fields: [venueId], references: [id])
+  hallAmenities HallAmenity[]
+  bookings      Booking[]
+  blockedDates  BlockedDate[]
+}
+
+model BlockedDate {
+  id        String   @id @default(cuid()) @map("_id")
+  hallId    String
+  startDate DateTime
+  endDate   DateTime
+  reason    String?
+  createdAt DateTime @default(now())
+
+  hall Hall @relation(fields: [hallId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// AMENITY CATALOG
+// ─────────────────────────────────────────────
+
+model AmenityTemplate {
+  id           String          @id @default(cuid()) @map("_id")
+  name         String
+  description  String?
+  category     AmenityCategory
+  defaultPrice Float
+  unit         String          @default("per event")
+  isActive     Boolean         @default(true)
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  hallAmenities    HallAmenity[]
+  bookingAmenities BookingAmenity[]
+}
+
+model HallAmenity {
+  id                String  @id @default(cuid()) @map("_id")
+  hallId            String
+  amenityTemplateId String
+  includedByDefault Boolean @default(false)
+  price             Float
+
+  hall            Hall            @relation(fields: [hallId], references: [id])
+  amenityTemplate AmenityTemplate @relation(fields: [amenityTemplateId], references: [id])
+
+  @@unique([hallId, amenityTemplateId])
+}
+
+// ─────────────────────────────────────────────
+// CLIENT / CRM
+// ─────────────────────────────────────────────
+
+model Client {
+  id         String   @id @default(cuid()) @map("_id")
+  name       String
+  phone      String
+  email      String?
+  address    String?
+  idProofUrl String?
+  isRepeat   Boolean  @default(false)
+  notes      String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  venueId  String
+  venue    Venue     @relation(fields: [venueId], references: [id])
+  bookings Booking[]
+}
+
+// ─────────────────────────────────────────────
+// BOOKING
+// ─────────────────────────────────────────────
+
+model Booking {
+  id            String        @id @default(cuid()) @map("_id")
+  bookingNumber String        @unique
+  hallId        String
+  clientId      String
+  eventType     EventType
+  startDate     DateTime
+  endDate       DateTime
+  timeSlot      TimeSlot
+  guestCount    Int
+  status        BookingStatus @default(ENQUIRY)
+  notes         String?
+
+  baseAmount    Float @default(0)
+  amenityTotal  Float @default(0)
+  grandTotal    Float @default(0)
+  paidAmount    Float @default(0)
+  balanceAmount Float @default(0)
+
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  hall                Hall                 @relation(fields: [hallId], references: [id])
+  client              Client               @relation(fields: [clientId], references: [id])
+  createdBy           User                 @relation("CreatedBy", fields: [createdById], references: [id])
+  amenities           BookingAmenity[]
+  payments            Payment[]
+  invoices            Invoice[]
+  staffAssignments    StaffAssignment[]
+  resourceAllocations ResourceAllocation[]
+  bookingVendors      BookingVendor[]
+}
+
+// ─────────────────────────────────────────────
+// BOOKING AMENITIES (post-booking add/remove)
+// ─────────────────────────────────────────────
+
+model BookingAmenity {
+  id                String    @id @default(cuid()) @map("_id")
+  bookingId         String
+  amenityTemplateId String
+  name              String
+  quantity          Int       @default(1)
+  unitPrice         Float
+  totalPrice        Float
+  addedAt           DateTime  @default(now())
+  removedAt         DateTime?
+  addedById         String
+
+  booking         Booking         @relation(fields: [bookingId], references: [id])
+  amenityTemplate AmenityTemplate @relation(fields: [amenityTemplateId], references: [id])
+  addedBy         User            @relation("AddedBy", fields: [addedById], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// PAYMENTS & INVOICES
+// ─────────────────────────────────────────────
+
+model Payment {
+  id             String         @id @default(cuid()) @map("_id")
+  bookingId      String
+  amount         Float
+  mode           PaymentMode
+  purpose        PaymentPurpose
+  transactionRef String?
+  metadata       Json?
+  isRefund       Boolean        @default(false)
+  notes          String?
+  receivedAt     DateTime       @default(now())
+  receivedById   String
+
+  booking    Booking @relation(fields: [bookingId], references: [id])
+  receivedBy User    @relation("ReceivedBy", fields: [receivedById], references: [id])
+}
+
+model Invoice {
+  id            String   @id @default(cuid()) @map("_id")
+  bookingId     String
+  invoiceNumber String   @unique
+  lineItems     Json
+  subtotal      Float
+  gstRate       Float    @default(18)
+  gstAmount     Float
+  grandTotal    Float
+  issuedAt      DateTime @default(now())
+  issuedById    String
+
+  booking  Booking @relation(fields: [bookingId], references: [id])
+  issuedBy User    @relation("IssuedBy", fields: [issuedById], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// STAFF & RESOURCES
+// ─────────────────────────────────────────────
+
+model Staff {
+  id        String   @id @default(cuid()) @map("_id")
+  venueId   String
+  name      String
+  phone     String
+  email     String?
+  role      String
+  salary    Float?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue       Venue             @relation(fields: [venueId], references: [id])
+  assignments StaffAssignment[]
+}
+
+model StaffAssignment {
+  id        String   @id @default(cuid()) @map("_id")
+  staffId   String
+  bookingId String
+  date      DateTime
+  startTime String
+  endTime   String
+  notes     String?
+  createdAt DateTime @default(now())
+
+  staff   Staff   @relation(fields: [staffId], references: [id])
+  booking Booking @relation(fields: [bookingId], references: [id])
+}
+
+model Resource {
+  id           String   @id @default(cuid()) @map("_id")
+  venueId      String
+  name         String
+  type         String
+  totalQty     Int
+  pricePerUnit Float    @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  venue       Venue                @relation(fields: [venueId], references: [id])
+  allocations ResourceAllocation[]
+}
+
+model ResourceAllocation {
+  id          String   @id @default(cuid()) @map("_id")
+  resourceId  String
+  bookingId   String
+  quantity    Int
+  allocatedAt DateTime @default(now())
+
+  resource Resource @relation(fields: [resourceId], references: [id])
+  booking  Booking  @relation(fields: [bookingId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// VENDORS
+// ─────────────────────────────────────────────
+
+model Vendor {
+  id       String  @id @default(cuid()) @map("_id")
+  venueId  String
+  name     String
+  category String
+  phone    String
+  email    String?
+  rating   Int?
+  notes    String?
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  venue          Venue           @relation(fields: [venueId], references: [id])
+  bookingVendors BookingVendor[]
+}
+
+model BookingVendor {
+  id                 String  @id @default(cuid()) @map("_id")
+  bookingId          String
+  vendorId           String
+  serviceDescription String?
+  agreedAmount       Float
+  paidAmount         Float   @default(0)
+  status             String  @default("PENDING")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  booking Booking @relation(fields: [bookingId], references: [id])
+  vendor  Vendor  @relation(fields: [vendorId], references: [id])
+}
