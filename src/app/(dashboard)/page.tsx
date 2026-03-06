@@ -1,5 +1,6 @@
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getVenueFilter } from "@/lib/venueFilter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Building2, CalendarCheck, CreditCard, Users, AlertCircle } from "lucide-react";
 import Link from "next/link";
@@ -8,16 +9,18 @@ import { BookingCalendar } from "@/components/dashboard/BookingCalendar";
 
 export default async function DashboardPage() {
   const session = await auth();
-  const user = session?.user as { role?: string; venueId?: string | null } | undefined;
-  const venueFilter = user?.role !== "ADMIN" && user?.venueId
-    ? { hall: { venueId: user.venueId } }
-    : {};
+
+  // Read fresh from DB — handles multi-venue admins and stale JWTs
+  const [bookingVenueFilter, clientVenueFilter] = await Promise.all([
+    getVenueFilter(session, "hall.venueId"),
+    getVenueFilter(session, "venueId"),
+  ]);
 
   const [totalBookings, confirmedToday, totalClients, outstandingBookings] = await Promise.all([
-    prisma.booking.count({ where: venueFilter }),
+    prisma.booking.count({ where: bookingVenueFilter }),
     prisma.booking.count({
       where: {
-        ...venueFilter,
+        ...bookingVenueFilter,
         status: { in: [BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS] },
         startDate: {
           gte: new Date(new Date().setHours(0, 0, 0, 0)),
@@ -25,11 +28,9 @@ export default async function DashboardPage() {
         },
       },
     }),
-    prisma.client.count({
-      where: user?.role !== "ADMIN" && user?.venueId ? { venueId: user.venueId } : {},
-    }),
+    prisma.client.count({ where: clientVenueFilter }),
     prisma.booking.findMany({
-      where: { ...venueFilter, balanceAmount: { gt: 0 }, status: { not: BookingStatus.CANCELLED } },
+      where: { ...bookingVenueFilter, balanceAmount: { gt: 0 }, status: { not: BookingStatus.CANCELLED } },
       select: { id: true, bookingNumber: true, balanceAmount: true, client: { select: { name: true } } },
       orderBy: { balanceAmount: "desc" },
       take: 5,

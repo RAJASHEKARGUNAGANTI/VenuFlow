@@ -12,6 +12,7 @@ datasource db {
 // ─────────────────────────────────────────────
 
 enum UserRole {
+  SUPER_ADMIN
   ADMIN
   MANAGER
   RECEPTIONIST
@@ -97,6 +98,7 @@ model User {
 
 model Venue {
   id        String   @id @default(cuid()) @map("_id")
+  adminId   String?  // id of the ADMIN user who owns this venue
   name      String
   address   String
   city      String

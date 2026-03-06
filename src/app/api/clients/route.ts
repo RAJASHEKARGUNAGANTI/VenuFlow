@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getVenueFilter } from "@/lib/venueFilter";
 
 const createSchema = z.object({
   name: z.string().min(1),
@@ -16,11 +17,10 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = session.user as { role?: string; venueId?: string | null };
   const search = req.nextUrl.searchParams.get("q") ?? "";
 
-  const where: Record<string, unknown> = {};
-  if (user.role !== "ADMIN" && user.venueId) where.venueId = user.venueId;
+  const venueFilter = await getVenueFilter(session);
+  const where: Record<string, unknown> = { ...venueFilter };
   if (search) {
     where.OR = [
       { name: { contains: search, mode: "insensitive" } },

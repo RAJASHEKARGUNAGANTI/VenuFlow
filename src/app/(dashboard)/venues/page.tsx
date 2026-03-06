@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -29,6 +30,9 @@ export default function VenuesPage() {
   const [open, setOpen] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { data: session } = useSession();
+  const role = (session?.user as { role?: string } | undefined)?.role;
+  const isAdmin = role === "ADMIN";
 
   const { data: venues = [], isLoading } = useQuery({
     queryKey: ["venues"],
@@ -40,15 +44,23 @@ export default function VenuesPage() {
   });
 
   const createVenue = useMutation({
-    mutationFn: (data: FormData) =>
-      fetch("/api/venues", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }).then((r) => r.json()),
+    mutationFn: async (data: FormData) => {
+      const res = await fetch("/api/venues", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Failed to create venue");
+      return json;
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["venues"] });
       setOpen(false);
       reset();
       toast({ title: "Venue created successfully" });
     },
-    onError: () => toast({ title: "Failed to create venue", variant: "destructive" }),
+    onError: (err: Error) => toast({ title: err.message, variant: "destructive" }),
   });
 
   return (
@@ -58,7 +70,7 @@ export default function VenuesPage() {
           <h2 className="text-xl font-semibold">Venues & Halls</h2>
           <p className="text-sm text-muted-foreground">Manage your venue locations</p>
         </div>
-        <Dialog open={open} onOpenChange={setOpen}>
+        {isAdmin && <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-2"><Plus className="h-4 w-4" /> Add Venue</Button>
           </DialogTrigger>
@@ -88,7 +100,7 @@ export default function VenuesPage() {
               </Button>
             </form>
           </DialogContent>
-        </Dialog>
+        </Dialog>}
       </div>
 
       {isLoading ? (

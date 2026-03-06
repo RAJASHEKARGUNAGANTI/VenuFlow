@@ -1,0 +1,379 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useForm, Controller, type Resolver } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { ShieldCheck, Users, TrendingUp, CalendarCheck, Plus, ToggleLeft, ToggleRight, Building2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { formatCurrency } from "@/lib/utils";
+
+interface Admin {
+  id: string;
+  name: string;
+  email: string;
+  isActive: boolean;
+  createdAt: string;
+  venue: { id: string; name: string } | null;
+  bookings: number;
+  revenue: number;
+}
+
+interface Venue {
+  id: string;
+  name: string;
+}
+
+const createSchema = z.object({
+  name: z.string().min(1, "Required"),
+  email: z.string().email("Invalid email"),
+  password: z.string().min(6, "At least 6 characters"),
+  venueId: z.string().min(1, "Venue is required"),
+});
+type FormData = z.infer<typeof createSchema>;
+
+const assignVenueSchema = z.object({
+  venueId: z.string().min(1, "Venue is required"),
+});
+type AssignVenueData = z.infer<typeof assignVenueSchema>;
+
+export default function SuperAdminPage() {
+  const [open, setOpen] = useState(false);
+  const [assignVenueAdmin, setAssignVenueAdmin] = useState<Admin | null>(null);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const { data: session, status } = useSession();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (status === "loading") return;
+    const role = (session?.user as { role?: string } | undefined)?.role;
+    if (role !== "SUPER_ADMIN") router.replace("/");
+  }, [session, status, router]);
+
+  if (status === "loading" || (session?.user as { role?: string } | undefined)?.role !== "SUPER_ADMIN") {
+    return null;
+  }
+
+  const { data: admins = [], isLoading } = useQuery<Admin[]>({
+    queryKey: ["super-admin-admins"],
+    queryFn: () => fetch("/api/super-admin/admins").then((r) => r.json()),
+  });
+
+  const { data: venues = [] } = useQuery<Venue[]>({
+    queryKey: ["venues"],
+    queryFn: () => fetch("/api/venues").then((r) => r.json()),
+  });
+
+  const { register, handleSubmit, control, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
+    resolver: zodResolver(createSchema) as Resolver<FormData>,
+  });
+
+  const assignForm = useForm<AssignVenueData>({
+    resolver: zodResolver(assignVenueSchema) as Resolver<AssignVenueData>,
+  });
+
+  const createAdmin = useMutation({
+    mutationFn: (data: FormData) =>
+      fetch("/api/super-admin/admins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      }).then(async (r) => {
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.error ?? "Failed");
+        return json;
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["super-admin-admins"] });
+      setOpen(false);
+      reset();
+      toast({ title: "Admin account created" });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  const toggleAdmin = useMutation({
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      fetch(`/api/super-admin/admins/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isActive }),
+      }).then((r) => r.json()),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["super-admin-admins"] });
+      toast({ title: "Admin status updated" });
+    },
+  });
+
+  const assignVenue = useMutation({
+    mutationFn: ({ id, venueId }: { id: string; venueId: string }) =>
+      fetch(`/api/super-admin/admins/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ venueId }),
+      }).then(async (r) => {
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.error ?? "Failed");
+        return json;
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["super-admin-admins"] });
+      setAssignVenueAdmin(null);
+      assignForm.reset();
+      toast({ title: "Venue assigned" });
+    },
+    onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
+  });
+
+  // KPIs
+  const totalAdmins = admins.length;
+  const activeAdmins = admins.filter((a) => a.isActive).length;
+  const totalRevenue = admins.reduce((s, a) => s + a.revenue, 0);
+  const totalBookings = admins.reduce((s, a) => s + a.bookings, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-semibold flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-primary" /> Admin Panel
+          </h2>
+          <p className="text-sm text-muted-foreground">Manage admin accounts across all venues</p>
+        </div>
+        <Dialog open={open} onOpenChange={setOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2"><Plus className="h-4 w-4" /> Create Admin</Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Create Admin Account</DialogTitle>
+            </DialogHeader>
+            <form
+              onSubmit={handleSubmit((d: FormData) => createAdmin.mutate(d))}
+              className="space-y-4 pt-2"
+            >
+              <div className="space-y-1">
+                <Label>Name</Label>
+                <Input {...register("name")} placeholder="Full name" />
+                {errors.name && <p className="text-xs text-destructive">{errors.name.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label>Email</Label>
+                <Input {...register("email")} type="email" placeholder="admin@example.com" />
+                {errors.email && <p className="text-xs text-destructive">{errors.email.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label>Password</Label>
+                <Input {...register("password")} type="password" placeholder="Min. 6 characters" />
+                {errors.password && <p className="text-xs text-destructive">{errors.password.message}</p>}
+              </div>
+              <div className="space-y-1">
+                <Label>Assign Venue <span className="text-destructive">*</span></Label>
+                <Controller
+                  name="venueId"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a venue" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {venues.map((v) => (
+                          <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                {errors.venueId && <p className="text-xs text-destructive">{errors.venueId.message}</p>}
+              </div>
+              <div className="flex justify-end gap-2 pt-2">
+                <Button type="button" variant="outline" onClick={() => { setOpen(false); reset(); }}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={isSubmitting || createAdmin.isPending}>
+                  {isSubmitting || createAdmin.isPending ? "Creating..." : "Create Admin"}
+                </Button>
+              </div>
+            </form>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Total Admins</span>
+              <Users className="h-4 w-4 text-blue-600" />
+            </div>
+            <p className="text-2xl font-bold">{totalAdmins}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Active Admins</span>
+              <ShieldCheck className="h-4 w-4 text-green-600" />
+            </div>
+            <p className="text-2xl font-bold text-green-600">{activeAdmins}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Combined Revenue</span>
+              <TrendingUp className="h-4 w-4 text-purple-600" />
+            </div>
+            <p className="text-2xl font-bold">{formatCurrency(totalRevenue)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-5 pb-5">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs text-muted-foreground">Total Bookings</span>
+              <CalendarCheck className="h-4 w-4 text-orange-600" />
+            </div>
+            <p className="text-2xl font-bold">{totalBookings}</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Admins Table */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Admin Accounts</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <p className="text-sm text-muted-foreground py-4">Loading...</p>
+          ) : admins.length === 0 ? (
+            <p className="text-sm text-muted-foreground py-4">No admin accounts yet.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Venue</TableHead>
+                  <TableHead className="text-right">Bookings</TableHead>
+                  <TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-center">Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {admins.map((admin) => (
+                  <TableRow key={admin.id}>
+                    <TableCell className="font-medium">{admin.name}</TableCell>
+                    <TableCell className="text-muted-foreground text-sm">{admin.email}</TableCell>
+                    <TableCell className="text-sm">
+                      {admin.venue ? admin.venue.name : (
+                        <span className="text-orange-500 italic text-xs">No venue — assign one</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right font-medium">{admin.bookings}</TableCell>
+                    <TableCell className="text-right font-medium">{formatCurrency(admin.revenue)}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant={admin.isActive ? "default" : "secondary"}>
+                        {admin.isActive ? "Active" : "Inactive"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {!admin.venue && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1.5 text-xs"
+                            onClick={() => {
+                              setAssignVenueAdmin(admin);
+                              assignForm.reset();
+                            }}
+                          >
+                            <Building2 className="h-3.5 w-3.5" /> Assign Venue
+                          </Button>
+                        )}
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 gap-1.5 text-xs"
+                          onClick={() => toggleAdmin.mutate({ id: admin.id, isActive: !admin.isActive })}
+                          disabled={toggleAdmin.isPending}
+                        >
+                          {admin.isActive
+                            ? <><ToggleLeft className="h-3.5 w-3.5 text-red-500" /> Deactivate</>
+                            : <><ToggleRight className="h-3.5 w-3.5 text-green-500" /> Activate</>
+                          }
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Assign Venue Dialog */}
+      <Dialog open={!!assignVenueAdmin} onOpenChange={(o) => { if (!o) { setAssignVenueAdmin(null); assignForm.reset(); } }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign Venue — {assignVenueAdmin?.name}</DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={assignForm.handleSubmit((d: AssignVenueData) =>
+              assignVenue.mutate({ id: assignVenueAdmin!.id, venueId: d.venueId })
+            )}
+            className="space-y-4 pt-2"
+          >
+            <div className="space-y-1">
+              <Label>Venue <span className="text-destructive">*</span></Label>
+              <Controller
+                name="venueId"
+                control={assignForm.control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ?? ""}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select a venue" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {venues.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>{v.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+              {assignForm.formState.errors.venueId && (
+                <p className="text-xs text-destructive">{assignForm.formState.errors.venueId.message}</p>
+              )}
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button type="button" variant="outline" onClick={() => { setAssignVenueAdmin(null); assignForm.reset(); }}>
+                Cancel
+              </Button>
+              <Button type="submit" disabled={assignVenue.isPending}>
+                {assignVenue.isPending ? "Assigning..." : "Assign Venue"}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

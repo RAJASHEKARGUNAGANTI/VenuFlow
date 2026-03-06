@@ -2,19 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { BookingStatus } from "@prisma/client";
+import { getVenueFilter } from "@/lib/venueFilter";
 
 export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = session.user as { role?: string; venueId?: string | null };
   const url = req.nextUrl;
   const from = url.searchParams.get("from") ?? new Date(new Date().getFullYear(), 0, 1).toISOString();
   const to = url.searchParams.get("to") ?? new Date().toISOString();
 
-  const venueFilter = user.role !== "ADMIN" && user.venueId
-    ? { hall: { venueId: user.venueId } }
-    : {};
+  const venueFilter = await getVenueFilter(session, "hall.venueId");
 
   const dateFilter = {
     startDate: { gte: new Date(from), lte: new Date(to) },

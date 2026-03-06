@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
+import { getUserVenueIds } from "@/lib/venueFilter";
 
 const createSchema = z.object({
   venueId: z.string().min(1),
@@ -15,14 +16,20 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const venueId = req.nextUrl.searchParams.get("venueId");
-  const user = session.user as { role?: string; venueId?: string | null };
+  const venueIdParam = req.nextUrl.searchParams.get("venueId");
+  const user = session.user as { role?: string };
 
-  const where: { venueId?: string } = {};
-  if (venueId) {
-    where.venueId = venueId;
-  } else if (user.role !== "ADMIN" && user.venueId) {
-    where.venueId = user.venueId;
+  // Read fresh from DB to avoid stale JWT venueId
+  const venueIds = await getUserVenueIds(session);
+
+  const where: Record<string, unknown> = {};
+  if (venueIds === null) {
+    // SUPER_ADMIN — optionally filter by param
+    if (venueIdParam) where.venueId = venueIdParam;
+  } else if (venueIds.length === 0) {
+    where.venueId = "__none__";
+  } else {
+    where.venueId = venueIds.length === 1 ? venueIds[0] : { in: venueIds };
   }
 
   const halls = await prisma.hall.findMany({

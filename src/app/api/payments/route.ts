@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getVenueFilter } from "@/lib/venueFilter";
 
 export async function GET(req: Request) {
   const session = await auth();
@@ -10,10 +11,7 @@ export async function GET(req: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  const user = session.user as { role?: string; venueId?: string | null };
-  const venueFilter = user.role !== "ADMIN" && user.venueId
-    ? { hall: { venueId: user.venueId } }
-    : {};
+  const venueFilter = await getVenueFilter(session, "hall.venueId");
 
   const dateFilter = from && to
     ? { receivedAt: { gte: new Date(from), lte: new Date(to) } }

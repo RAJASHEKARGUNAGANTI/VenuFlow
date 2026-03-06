@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useSession } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,7 +14,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useForm, type Resolver } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { ArrowLeft, Building2, MapPin, Phone, Mail, Receipt, Plus, Edit2, Users, IndianRupee } from "lucide-react";
+import { ArrowLeft, Building2, MapPin, Phone, Mail, Receipt, Plus, Edit2, Users, IndianRupee, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
@@ -65,10 +66,14 @@ export default function VenueDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const router = useRouter();
+  const { data: session } = useSession();
+  const isAdmin = (session?.user as { role?: string } | undefined)?.role === "ADMIN";
 
   const [editVenueOpen, setEditVenueOpen] = useState(false);
   const [addHallOpen, setAddHallOpen] = useState(false);
   const [editHall, setEditHall] = useState<Hall | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const { data: venue, isLoading } = useQuery<Venue>({
     queryKey: ["venue", id],
@@ -132,6 +137,24 @@ export default function VenueDetailPage() {
     onError: () => toast({ title: "Failed to update hall", variant: "destructive" }),
   });
 
+  const deleteVenue = useMutation({
+    mutationFn: () =>
+      fetch(`/api/venues/${id}`, { method: "DELETE" }).then(async (r) => {
+        const json = await r.json();
+        if (!r.ok) throw new Error(json.error ?? "Failed to delete venue");
+        return json;
+      }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["venues"] });
+      toast({ title: "Venue deleted" });
+      router.push("/venues");
+    },
+    onError: (e: Error) => {
+      setDeleteOpen(false);
+      toast({ title: e.message, variant: "destructive" });
+    },
+  });
+
   function openEditHall(hall: Hall) {
     editHallForm.reset({ name: hall.name, capacity: hall.capacity, basePrice: hall.basePrice, description: hall.description ?? "" });
     setEditHall(hall);
@@ -154,6 +177,39 @@ export default function VenueDetailPage() {
         <Badge variant={venue.isActive ? "default" : "secondary"} className="ml-auto">
           {venue.isActive ? "Active" : "Inactive"}
         </Badge>
+        {isAdmin && (
+          <>
+            <Button variant="destructive" size="sm" className="gap-2" onClick={() => setDeleteOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> Delete Venue
+            </Button>
+            <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Delete Venue</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-3 py-2">
+                  <p className="text-sm text-muted-foreground">
+                    Are you sure you want to delete <span className="font-semibold text-foreground">{venue.name}</span>?
+                    This will permanently remove the venue and all its halls.
+                  </p>
+                  <p className="text-xs text-destructive font-medium">
+                    This action cannot be undone. Venues with active bookings cannot be deleted.
+                  </p>
+                </div>
+                <div className="flex justify-end gap-2 pt-1">
+                  <Button variant="outline" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+                  <Button
+                    variant="destructive"
+                    onClick={() => deleteVenue.mutate()}
+                    disabled={deleteVenue.isPending}
+                  >
+                    {deleteVenue.isPending ? "Deleting..." : "Yes, Delete Venue"}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
       </div>
 
       {/* Venue info card */}

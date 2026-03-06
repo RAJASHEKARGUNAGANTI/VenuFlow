@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import { BookingStatus, EventType, TimeSlot } from "@prisma/client";
 import { nanoid } from "@/lib/utils";
+import { getVenueFilter } from "@/lib/venueFilter";
 
 const createSchema = z.object({
   hallId: z.string().min(1),
@@ -21,7 +22,6 @@ export async function GET(req: NextRequest) {
   const session = await auth();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const user = session.user as { role?: string; venueId?: string | null };
   const url = req.nextUrl;
   const status = url.searchParams.get("status") as BookingStatus | null;
   const hallId = url.searchParams.get("hallId");
@@ -29,8 +29,8 @@ export async function GET(req: NextRequest) {
   const from = url.searchParams.get("from");
   const to = url.searchParams.get("to");
 
-  const where: Record<string, unknown> = {};
-  if (user.role !== "ADMIN" && user.venueId) where.hall = { venueId: user.venueId };
+  const venueFilter = await getVenueFilter(session, "hall.venueId");
+  const where: Record<string, unknown> = { ...venueFilter };
   if (status) where.status = status;
   if (hallId) where.hallId = hallId;
   if (clientId) where.clientId = clientId;
