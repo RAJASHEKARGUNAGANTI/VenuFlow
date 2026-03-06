@@ -59,6 +59,7 @@ interface Venue {
   gstNumber?: string;
   isActive: boolean;
   halls: Hall[];
+  totalBookings?: number;
   _count?: { clients: number; staff: number };
 }
 
@@ -272,6 +273,7 @@ export default function VenueDetailPage() {
             </div>
           )}
           <div className="flex gap-4 pt-1 col-span-full text-foreground font-medium">
+            <span>{venue.totalBookings ?? 0} bookings</span>
             <span>{venue._count?.clients ?? 0} clients</span>
             <span>{venue._count?.staff ?? 0} staff</span>
             <span>{venue.halls.length} halls</span>

@@ -2,6 +2,7 @@
 
 import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Users, Building2, Clock, IndianRupee, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/lib/utils";
@@ -77,6 +78,7 @@ export function BookingCalendar() {
   const [month, setMonth] = useState(today.getMonth()); // 0-indexed
   const [popup, setPopup] = useState<PopupState | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const router = useRouter();
 
   const from = new Date(year, month, 1).toISOString();
   const to = new Date(year, month + 1, 0, 23, 59, 59).toISOString();
@@ -183,11 +185,12 @@ export function BookingCalendar() {
                     {dayBookings.slice(0, 3).map((b) => (
                       <button
                         key={b.id}
+                        type="button"
                         className={`w-full text-left text-[10px] font-medium px-1.5 py-0.5 rounded truncate leading-tight
                           ${statusColor[b.status]} hover:opacity-80 transition-opacity cursor-pointer`}
                         onMouseEnter={(e) => handleChipEnter(e, b)}
                         onMouseLeave={() => setPopup(null)}
-                        onClick={() => setPopup(p => p?.booking.id === b.id ? null : { booking: b, x: 0, y: 0 })}
+                        onClick={() => router.push(`/bookings/${b.id}`)}
                       >
                         {b.client.name}
                       </button>

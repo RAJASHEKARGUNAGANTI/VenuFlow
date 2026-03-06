@@ -40,3 +40,19 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   const client = await prisma.client.update({ where: { id: params.id }, data: parsed.data });
   return NextResponse.json(client);
 }
+
+export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+  const session = await auth();
+  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const bookingCount = await prisma.booking.count({ where: { clientId: params.id } });
+  if (bookingCount > 0) {
+    return NextResponse.json(
+      { error: `Cannot delete: client has ${bookingCount} booking(s).` },
+      { status: 409 }
+    );
+  }
+
+  await prisma.client.delete({ where: { id: params.id } });
+  return NextResponse.json({ success: true });
+}

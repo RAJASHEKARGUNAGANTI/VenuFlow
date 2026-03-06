@@ -22,16 +22,19 @@ export async function GET(_: NextRequest, { params }: { params: { id: string } }
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  const venue = await prisma.venue.findUnique({
-    where: { id: params.id },
-    include: {
-      halls: { include: { _count: { select: { bookings: true } } } },
-      _count: { select: { clients: true, staff: true } },
-    },
-  });
+  const [venue, totalBookings] = await Promise.all([
+    prisma.venue.findUnique({
+      where: { id: params.id },
+      include: {
+        halls: { include: { _count: { select: { bookings: true } } } },
+        _count: { select: { clients: true, staff: true } },
+      },
+    }),
+    prisma.booking.count({ where: { hall: { venueId: params.id } } }),
+  ]);
 
   if (!venue) return NextResponse.json({ error: "Not found" }, { status: 404 });
-  return NextResponse.json(venue);
+  return NextResponse.json({ ...venue, totalBookings });
 }
 
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
@@ -66,7 +69,7 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
-  // Block deletion if venue has active (non-cancelled/completed) bookings
+  // Block deletion only if this venue's halls have active bookings
   const activeBookings = await prisma.booking.count({
     where: { hall: { venueId: params.id }, status: { notIn: ["CANCELLED", "COMPLETED"] } },
   });
@@ -78,11 +81,24 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
   }
 
   // Cascade delete manually (MongoDB/Prisma has no automatic cascade)
-  const halls = await prisma.hall.findMany({ where: { venueId: params.id }, select: { id: true } });
+  const [halls, clients] = await Promise.all([
+    prisma.hall.findMany({ where: { venueId: params.id }, select: { id: true } }),
+    prisma.client.findMany({ where: { venueId: params.id }, select: { id: true } }),
+  ]);
   const hallIds = halls.map((h) => h.id);
+  const clientIds = clients.map((c) => c.id);
 
-  const bookings = await prisma.booking.findMany({ where: { hallId: { in: hallIds } }, select: { id: true } });
-  const bookingIds = bookings.map((b) => b.id);
+  // Collect ALL booking IDs — via halls (in this venue) AND via clients (may be cross-venue)
+  const bookingResults = await prisma.booking.findMany({
+    where: {
+      OR: [
+        ...(hallIds.length > 0 ? [{ hallId: { in: hallIds } }] : []),
+        ...(clientIds.length > 0 ? [{ clientId: { in: clientIds } }] : []),
+      ],
+    },
+    select: { id: true },
+  });
+  const bookingIds = [...new Set(bookingResults.map((b) => b.id))];
 
   if (bookingIds.length > 0) {
     await prisma.bookingAmenity.deleteMany({ where: { bookingId: { in: bookingIds } } });
