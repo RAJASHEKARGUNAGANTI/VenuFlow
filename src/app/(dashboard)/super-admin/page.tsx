@@ -18,6 +18,7 @@ import { z } from "zod";
 import { ShieldCheck, Users, TrendingUp, CalendarCheck, Plus, ToggleLeft, ToggleRight, Building2, BookOpen } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { formatCurrency } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Admin {
   id: string;
@@ -55,24 +56,23 @@ export default function SuperAdminPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
 
+  const isSuperAdmin = status !== "loading" && (session?.user as { role?: string } | undefined)?.role === "SUPER_ADMIN";
+
   useEffect(() => {
     if (status === "loading") return;
-    const role = (session?.user as { role?: string } | undefined)?.role;
-    if (role !== "SUPER_ADMIN") router.replace("/");
-  }, [session, status, router]);
-
-  if (status === "loading" || (session?.user as { role?: string } | undefined)?.role !== "SUPER_ADMIN") {
-    return null;
-  }
+    if (!isSuperAdmin) router.replace("/");
+  }, [isSuperAdmin, status, router]);
 
   const { data: admins = [], isLoading } = useQuery<Admin[]>({
     queryKey: ["super-admin-admins"],
     queryFn: () => fetch("/api/super-admin/admins").then((r) => r.json()),
+    enabled: isSuperAdmin,
   });
 
   const { data: venues = [] } = useQuery<Venue[]>({
     queryKey: ["venues"],
     queryFn: () => fetch("/api/venues").then((r) => r.json()),
+    enabled: isSuperAdmin,
   });
 
   const { data: globalStats } = useQuery<{
@@ -81,6 +81,7 @@ export default function SuperAdminPage() {
   }>({
     queryKey: ["super-admin-stats"],
     queryFn: () => fetch("/api/super-admin/stats").then((r) => r.json()),
+    enabled: isSuperAdmin,
   });
 
   const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>({
@@ -144,6 +145,7 @@ export default function SuperAdminPage() {
     onError: (e: Error) => toast({ title: e.message, variant: "destructive" }),
   });
 
+  if (!isSuperAdmin) return null;
 
   return (
     <div className="space-y-6">
@@ -196,29 +198,30 @@ export default function SuperAdminPage() {
 
       {/* Global Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {[
-          { label: "Total Admins",   value: globalStats?.totalAdmins ?? "—",   icon: Users,        color: "text-blue-600" },
-          { label: "Active Admins",  value: globalStats?.activeAdmins ?? "—",  icon: ShieldCheck,  color: "text-green-600" },
-          { label: "Total Venues",   value: globalStats?.totalVenues ?? "—",   icon: Building2,    color: "text-indigo-600" },
-          { label: "Total Halls",    value: globalStats?.totalHalls ?? "—",    icon: BookOpen,     color: "text-cyan-600" },
-          { label: "Total Bookings", value: globalStats?.totalBookings ?? "—", icon: CalendarCheck,color: "text-orange-600" },
-          {
-            label: "Total Revenue",
-            value: globalStats ? formatCurrency(globalStats.totalRevenue) : "—",
-            icon: TrendingUp,
-            color: "text-purple-600",
-          },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <Card key={label}>
-            <CardContent className="pt-5 pb-5">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">{label}</span>
-                <Icon className={`h-4 w-4 ${color}`} />
-              </div>
-              <p className={`text-2xl font-bold ${color}`}>{value}</p>
-            </CardContent>
-          </Card>
-        ))}
+        {!globalStats ? (
+          Array.from({ length: 6 }).map((_, i) => (
+            <Card key={i}><CardContent className="pt-5 pb-5"><Skeleton className="h-3 w-24 mb-3" /><Skeleton className="h-7 w-28" /></CardContent></Card>
+          ))
+        ) : (
+          [
+            { label: "Total Admins",   value: globalStats.totalAdmins,   icon: Users,        color: "text-blue-600" },
+            { label: "Active Admins",  value: globalStats.activeAdmins,  icon: ShieldCheck,  color: "text-green-600" },
+            { label: "Total Venues",   value: globalStats.totalVenues,   icon: Building2,    color: "text-indigo-600" },
+            { label: "Total Halls",    value: globalStats.totalHalls,    icon: BookOpen,     color: "text-cyan-600" },
+            { label: "Total Bookings", value: globalStats.totalBookings, icon: CalendarCheck,color: "text-orange-600" },
+            { label: "Total Revenue",  value: formatCurrency(globalStats.totalRevenue), icon: TrendingUp, color: "text-purple-600" },
+          ].map(({ label, value, icon: Icon, color }) => (
+            <Card key={label}>
+              <CardContent className="pt-5 pb-5">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">{label}</span>
+                  <Icon className={`h-4 w-4 ${color}`} />
+                </div>
+                <p className={`text-2xl font-bold ${color}`}>{value}</p>
+              </CardContent>
+            </Card>
+          ))
+        )}
       </div>
 
       {/* Admins Table */}
@@ -228,7 +231,28 @@ export default function SuperAdminPage() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <p className="text-sm text-muted-foreground py-4">Loading...</p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead><TableHead>Email</TableHead><TableHead>Venue</TableHead>
+                  <TableHead className="text-right">Bookings</TableHead><TableHead className="text-right">Revenue</TableHead>
+                  <TableHead className="text-center">Status</TableHead><TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-40" /></TableCell>
+                    <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-8 ml-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-4 w-20 ml-auto" /></TableCell>
+                    <TableCell className="text-center"><Skeleton className="h-5 w-16 rounded-full mx-auto" /></TableCell>
+                    <TableCell className="text-right"><Skeleton className="h-7 w-24 ml-auto rounded-md" /></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           ) : admins.length === 0 ? (
             <p className="text-sm text-muted-foreground py-4">No admin accounts yet.</p>
           ) : (

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { TrendingUp, CreditCard, Calendar, Download } from "lucide-react";
 import { formatCurrency } from "@/lib/utils";
 import { createWorkbook, downloadWorkbook } from "@/lib/exportExcel";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, string> = {
   ENQUIRY: "bg-yellow-400",
@@ -112,7 +113,7 @@ export default function ReportsPage() {
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{formatCurrency(summary.totalRevenue ?? 0)}</p>
+            {isLoading ? <Skeleton className="h-7 w-36" /> : <p className="text-2xl font-bold">{formatCurrency(summary.totalRevenue ?? 0)}</p>}
           </CardContent>
         </Card>
         <Card>
@@ -121,7 +122,7 @@ export default function ReportsPage() {
             <CreditCard className="h-4 w-4 text-orange-600" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalOutstanding ?? 0)}</p>
+            {isLoading ? <Skeleton className="h-7 w-36" /> : <p className="text-2xl font-bold text-orange-600">{formatCurrency(summary.totalOutstanding ?? 0)}</p>}
           </CardContent>
         </Card>
         <Card>
@@ -130,7 +131,7 @@ export default function ReportsPage() {
             <Calendar className="h-4 w-4 text-blue-600" />
           </CardHeader>
           <CardContent>
-            <p className="text-2xl font-bold">{summary.totalBookings ?? 0}</p>
+            {isLoading ? <Skeleton className="h-7 w-20" /> : <p className="text-2xl font-bold">{summary.totalBookings ?? 0}</p>}
           </CardContent>
         </Card>
       </div>
@@ -140,7 +141,13 @@ export default function ReportsPage() {
         <Card>
           <CardHeader><CardTitle className="text-base">Revenue by Month</CardTitle></CardHeader>
           <CardContent>
-            {Object.keys(byMonth).length === 0 ? (
+            {isLoading ? (
+              <div className="space-y-3">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i}><div className="flex justify-between mb-1"><Skeleton className="h-4 w-20" /><Skeleton className="h-4 w-16" /></div><Skeleton className="h-2 w-full rounded-full" /></div>
+                ))}
+              </div>
+            ) : Object.keys(byMonth).length === 0 ? (
               <p className="text-sm text-muted-foreground py-4">No data</p>
             ) : (
               <div className="space-y-2">

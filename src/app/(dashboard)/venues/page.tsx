@@ -15,6 +15,7 @@ import { z } from "zod";
 import { Building2, Plus, MapPin, Phone } from "lucide-react";
 import Link from "next/link";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const schema = z.object({
   name: z.string().min(1, "Required"),
@@ -104,7 +105,26 @@ export default function VenuesPage() {
       </div>
 
       {isLoading ? (
-        <div className="text-sm text-muted-foreground">Loading...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <Card key={i}>
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <Skeleton className="h-5 w-3/4" />
+                  <Skeleton className="h-5 w-16 rounded-full" />
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-2/3" />
+                <div className="flex gap-4 pt-2">
+                  <Skeleton className="h-4 w-16" />
+                  <Skeleton className="h-4 w-16" />
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
       ) : venues.length === 0 ? (
         <Card className="text-center py-12">
           <CardContent>

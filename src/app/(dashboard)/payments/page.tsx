@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { formatCurrency, formatDate } from "@/lib/utils";
 import { createWorkbook, downloadWorkbook } from "@/lib/exportExcel";
 import { PaymentMode, PaymentPurpose } from "@prisma/client";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -187,7 +188,32 @@ export default function PaymentsPage() {
   });
 
   if (isLoading) return (
-    <div className="flex items-center justify-center h-64 text-muted-foreground text-sm">Loading...</div>
+    <div className="space-y-6">
+      <div><Skeleton className="h-6 w-32" /><Skeleton className="h-4 w-48 mt-1" /></div>
+      <Card><CardContent className="pt-4 pb-4"><div className="flex gap-4"><Skeleton className="h-8 w-36" /><Skeleton className="h-8 w-36" /><Skeleton className="h-8 w-20" /></div></CardContent></Card>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}><CardContent className="pt-5 pb-5"><Skeleton className="h-4 w-24 mb-3" /><Skeleton className="h-7 w-32" /><Skeleton className="h-3 w-20 mt-2" /></CardContent></Card>
+        ))}
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <Card className="lg:col-span-2"><CardContent className="pt-5"><Skeleton className="h-[220px] w-full" /></CardContent></Card>
+        <Card><CardContent className="pt-5"><Skeleton className="h-[220px] w-full" /></CardContent></Card>
+      </div>
+      <Card>
+        <CardContent className="p-4 space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex gap-4">
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-4 w-16" />
+              <Skeleton className="h-4 w-20" />
+              <Skeleton className="h-4 w-20 ml-auto" />
+            </div>
+          ))}
+        </CardContent>
+      </Card>
+    </div>
   );
 
   // ── Aggregations (always on full data) ────────────────────────────────────

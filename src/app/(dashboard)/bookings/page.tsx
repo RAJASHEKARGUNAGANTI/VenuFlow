@@ -9,6 +9,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { formatCurrency, formatDate } from "@/lib/utils";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, string> = {
   ENQUIRY: "bg-yellow-100 text-yellow-800",
@@ -92,7 +93,18 @@ export default function BookingsPage() {
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Loading...</TableCell></TableRow>
+              Array.from({ length: 6 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-28" /><Skeleton className="h-3 w-20 mt-1" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-16 mt-1" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-16" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                </TableRow>
+              ))
             ) : filtered.length === 0 ? (
               <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">No bookings found</TableCell></TableRow>
             ) : (

@@ -12,6 +12,7 @@ import { formatCurrency, formatDate } from "@/lib/utils";
 import { AmenityManager } from "@/components/bookings/AmenityManager";
 import { PaymentPanel } from "@/components/bookings/PaymentPanel";
 import { useToast } from "@/hooks/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const statusColors: Record<string, string> = {
   ENQUIRY: "bg-yellow-100 text-yellow-800",
@@ -59,7 +60,28 @@ export default function BookingDetailPage() {
     },
   });
 
-  if (isLoading) return <div className="text-muted-foreground text-sm">Loading...</div>;
+  if (isLoading) return (
+    <div className="space-y-5 max-w-4xl">
+      <div className="flex items-center gap-3">
+        <Skeleton className="h-8 w-20" />
+        <div><Skeleton className="h-6 w-48" /><Skeleton className="h-4 w-32 mt-1" /></div>
+        <Skeleton className="h-6 w-24 rounded-full ml-auto" />
+      </div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {Array.from({ length: 4 }).map((_, i) => (
+          <Card key={i}><CardContent className="pt-4 pb-4"><Skeleton className="h-3 w-16 mb-2" /><Skeleton className="h-4 w-24" /><Skeleton className="h-3 w-20 mt-1" /></CardContent></Card>
+        ))}
+      </div>
+      <Card><CardContent className="pt-4 pb-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i}><Skeleton className="h-3 w-20 mx-auto mb-2" /><Skeleton className="h-5 w-24 mx-auto" /></div>
+          ))}
+        </div>
+      </CardContent></Card>
+      <div><Skeleton className="h-9 w-64 mb-4" /><Skeleton className="h-40 w-full rounded-lg" /></div>
+    </div>
+  );
   if (!booking || booking.error) return <div className="text-destructive">Booking not found</div>;
 
   const allowedNext = nextStatuses[booking.status] ?? [];
