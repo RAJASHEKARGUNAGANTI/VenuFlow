@@ -1,11 +1,12 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
 
-function isSuperAdmin(session: { user?: { role?: string } } | null) {
-  return (session?.user as { role?: string })?.role === "SUPER_ADMIN";
+function isSuperAdmin(session: unknown) {
+  return (session as { user?: { role?: string } } | null)?.user?.role === "SUPER_ADMIN";
 }
 
 const createSchema = z.object({

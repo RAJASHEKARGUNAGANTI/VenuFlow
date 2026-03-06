@@ -266,9 +266,9 @@ export default function ClientsPage() {
             <AlertDialogTitle>Delete client?</AlertDialogTitle>
             <AlertDialogDescription>
               <strong>{deleteClient?.name}</strong> will be permanently deleted. This cannot be undone.
-              {deleteClient?._count.bookings > 0 && (
+              {(deleteClient?._count?.bookings ?? 0) > 0 && (
                 <span className="block mt-2 text-destructive font-medium">
-                  This client has {deleteClient._count.bookings} booking(s) and cannot be deleted.
+                  This client has {deleteClient?._count?.bookings} booking(s) and cannot be deleted.
                 </span>
               )}
             </AlertDialogDescription>

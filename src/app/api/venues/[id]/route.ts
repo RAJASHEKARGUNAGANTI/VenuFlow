@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -101,7 +102,7 @@ export async function DELETE(_: NextRequest, { params }: { params: { id: string 
     },
     select: { id: true },
   });
-  const bookingIds = [...new Set(bookingResults.map((b) => b.id))];
+  const bookingIds = Array.from(new Set(bookingResults.map((b) => b.id)));
 
   if (bookingIds.length > 0) {
     await prisma.bookingAmenity.deleteMany({ where: { bookingId: { in: bookingIds } } });

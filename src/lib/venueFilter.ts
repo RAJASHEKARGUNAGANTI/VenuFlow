@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import { prisma } from "@/lib/prisma";
 
 type Session = { user?: { id?: string; email?: string | null; role?: string } } | null;

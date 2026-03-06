@@ -120,11 +120,6 @@ export function BookingCalendar() {
     });
   }
 
-  function handleChipLeave() {
-    // Small delay so user can move to popup
-    setTimeout(() => setPopup(p => p), 0);
-  }
-
   const monthName = new Date(year, month).toLocaleString("default", { month: "long" });
 
   return (
@@ -226,7 +221,7 @@ export function BookingCalendar() {
               <p className="font-semibold mt-1.5 text-foreground">{popup.booking.client.name}</p>
               <p className="text-xs text-muted-foreground">{popup.booking.client.phone}</p>
             </div>
-            <button onClick={() => setPopup(null)} className="text-muted-foreground hover:text-foreground mt-0.5">
+            <button title="x" onClick={() => setPopup(null)} className="text-muted-foreground hover:text-foreground mt-0.5">
               <X className="h-3.5 w-3.5" />
             </button>
           </div>

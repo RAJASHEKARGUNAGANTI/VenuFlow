@@ -3,6 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 // Edge-compatible auth config — no Prisma imports here.
 // Used by middleware directly; full auth.ts spreads this + adds Credentials provider.
 export const authConfig = {
+  trustHost: true,
   session: { strategy: "jwt" as const },
   pages: {
     signIn: "/login",
